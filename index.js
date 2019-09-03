@@ -1,79 +1,114 @@
-import { Server } from "tls";
-
 // implement your API here
-Server.get('/api/users', (req, res) => {
-    res.send('hello');
-});
-
-// import express
 const express = require('express');
+const db = require('./data/db.js');
 
-// import hubs-model file
-const Hubs = require('./data/hubs-model');
-
+// create server by calling express
 const server = express();
 
-//add this line to teach express to parse JSON
+// add this line to teach express how to parse JSON from body. This line says we're using some express middleware
 server.use(express.json());
 
-//see a list of Hubs (like a channel on slack): /hubs
-Server.get('/api/users', (req, res) => {
-    //Hubs.find() returns a promise. We need .then() and .catch()
-    Hubs.find()
-        .then(hubs => {
-            // .json will convert the data passed in to JSON. 
-            // tells the client we're sending JSON through an HTTP header
-            res.status(200).json(hubs);
-        })
-        .catch(error => {
-            res.status(500).json({ error: "There was an error while saving the user to the database" });
+// get all users endpoint
+server.get('/api/users', (req, res) => {
+    db.find()
+        .then(users => res.status(200).json(users))
+        .catch(err => {
+            console.log(err);
+            res.status(500).json({ error: "The users information could not be retrieved." });
         });
 });
 
-// create a Hub
-Server.post('/hubs', (req, res) => {
-    // http message is an object w/ headers and body => {headers: {}, body: {data sent by client} }.
-    // we care about the data in the body
-    const HubInformation = req.body;
-    console.log('hub info from body', hubInformation);
-    Hubs.add(hubInformation)
-        .then(result => {
-            res.status(201).json(Created);
+// create a user
+server.post('/api/users', (req, res) => {
+    // http message is an object w/ headers and body => {headers: {}, body: {data sent by client} }. we care about the data in the body
+    // console.log(req.body);
+    // res.end();
+    const { name, bio } = req.body;
+    // check that information is valid
+    if (!name || !bio) {
+        res.status(400).json({ error: 'Please provide name and bio for the user.' });
+    }
+    db.insert({ name, bio })
+        // destructured first argument into an object called id
+        .then(({ id }) => {
+            db.findById(id)
+                .then(user => {
+                    res.status(201).json(user);
+                })
+                .catch(err => {
+                    console.log(err);
+                    res.status(500).json({ error: "There was an error retrieving user." });
+                });
         })
-        .catch(error => {
-            res.status(500).json({ message: 'error adding the Hub' });
+        .catch(err => {
+            console.log(err);
+            res.status(500).json({ error: "There was an error while saving the user to the database." });
         });
 });
 
-// delete a Hub
+// get individual user endpoint
+server.get('/api/users/:id', (req, res) => {
+    // contains id of user being requested. can destructure: const {id} = req.params;
+    const id = req.params.id;
+    // console.log(req.params);
+    // res.end();
+    db.findById(id)
+        .then(user => {
+            console.log('user', user);
+            if (user) {
+                res.status(200).json(user)
+            } else {
+                res.status(404).json({ error: "The user with the specified ID does not exist." });
+            }
+        })
+        .catch(err => {
+            console.log(err);
+            res.status(500).json({ error: "The user information could not be retrieved." });
+        });
+});
+
+// delete a user
 server.delete('/api/users/:id', (req, res) => {
-    const hubId = req.params.id;
-    Hubs.remove(id)
-        .then(result => {
-            res.status(201).json({ message: "hub deleted successfully" });
+    const { id } = req.params;
+    db.remove(id)
+        .then(deleted => {
+            if (deleted) {
+                // console.log(something);
+                res.status(204).end();
+            } else {
+                res.status(404).json({ error: "The user with the specified ID does not exist." })
+            }
         })
-        .catch(error => {
+        .catch(err => {
+            console.log(err);
             res.status(500).json({ error: "The user could not be removed" });
         });
 });
 
-//update a Hub
+// update a user
 server.put('/api/users/:id', (req, res) => {
-    const { id } = req.params;
-    const changes = req.body;
-
-    Hubs.update(id, changes)
+    const { name, bio } = req.body;
+    if (!name && !bio) {
+        res.status(400).json({ error: "Please provide name and bio for the user." })
+    }
+    db.update(id, { name, bio })
         .then(updated => {
             if (updated) {
-                res.status(200).json(updated);
+                db.findById(id)
+                    .then(user => res.status(200).json(user))
+                    .catch(err => {
+                        console.log(err);
+                        res.status(500).json({ error: "The user information could not be modified." });
+                    });
             } else {
-                res.status(404).json({ message: "The user with the specified ID does not exist." });
+                res.status(404).json({ error: "The user with the specified ID does not exist." });
             }
         })
         .catch(err => {
-            res.status(500).json({ error: "The user information could not be modified." })
+            console.log(err);
+            res.status(500).json({ error: "The user information could not be modified." });
         });
 });
 
-const port = 8000;
-Server.listen(port, () => console.log('\napi running\n'));
+// have server listen on a specified port. alternative: server.listen(8000, () => console.log("server on 8000"));
+server.listen(8000, () => console.log('\napi on port 8000\n'))
