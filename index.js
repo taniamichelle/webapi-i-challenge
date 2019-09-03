@@ -1,7 +1,7 @@
 import { Server } from "tls";
 
 // implement your API here
-Server.get('/', (req, res) => {
+Server.get('/api/users', (req, res) => {
     res.send('hello');
 });
 
@@ -17,7 +17,7 @@ const server = express();
 server.use(express.json());
 
 //see a list of Hubs (like a channel on slack): /hubs
-Server.get('/hubs', (req, res) => {
+Server.get('/api/users', (req, res) => {
     //Hubs.find() returns a promise. We need .then() and .catch()
     Hubs.find()
         .then(hubs => {
@@ -26,7 +26,7 @@ Server.get('/hubs', (req, res) => {
             res.status(200).json(hubs);
         })
         .catch(error => {
-            res.status(500).json({ message: 'error getting list of hubs' });
+            res.status(500).json({ error: "There was an error while saving the user to the database" });
         });
 });
 
@@ -38,7 +38,7 @@ Server.post('/hubs', (req, res) => {
     console.log('hub info from body', hubInformation);
     Hubs.add(hubInformation)
         .then(result => {
-            res.status(201).json(result);
+            res.status(201).json(Created);
         })
         .catch(error => {
             res.status(500).json({ message: 'error adding the Hub' });
@@ -46,19 +46,19 @@ Server.post('/hubs', (req, res) => {
 });
 
 // delete a Hub
-server.delete('/hubs/:id', (req, res) => {
+server.delete('/api/users/:id', (req, res) => {
     const hubId = req.params.id;
     Hubs.remove(id)
         .then(result => {
-            res.status(201).json({ message: 'hub deleted successfully' });
+            res.status(201).json({ message: "hub deleted successfully" });
         })
         .catch(error => {
-            res.status(500).json({ message: 'error removing the Hub' });
+            res.status(500).json({ error: "The user could not be removed" });
         });
 });
 
 //update a Hub
-server.put('/hub', (req, res) => {
+server.put('/api/users/:id', (req, res) => {
     const { id } = req.params;
     const changes = req.body;
 
@@ -67,11 +67,11 @@ server.put('/hub', (req, res) => {
             if (updated) {
                 res.status(200).json(updated);
             } else {
-                res.status(404).json({ message: 'hub not found' });
+                res.status(404).json({ message: "The user with the specified ID does not exist." });
             }
         })
         .catch(err => {
-            res.status(500).json({ message: 'error upating hub' })
+            res.status(500).json({ error: "The user information could not be modified." })
         });
 });
 
